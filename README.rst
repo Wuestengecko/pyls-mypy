@@ -24,10 +24,6 @@ Configuration
 
 ``live_mode`` (default is True) provides type checking as you type.
 
-As mypy is unaware of what file path is being checked, there are limitations with live_mode
- - Imports cannot be followed correctly
- - Stub files are not validated correctly
-
 Turning off live_mode means you must save your changes for mypy diagnostics to update correctly.
 
 Depending on your editor, the configuration should be roughly like this:
