@@ -1,5 +1,7 @@
 import re
 import logging
+import os
+import tempfile
 from mypy import api as mypy_api
 from pyls import hookimpl
 
@@ -56,23 +58,33 @@ def parse_line(line, document=None):
 def pyls_lint(config, workspace, document, is_saved):
     settings = config.plugin_settings('pyls_mypy')
     live_mode = settings.get('live_mode', True)
-    if live_mode:
-        args = ['--incremental',
-                '--show-column-numbers',
-                '--follow-imports', 'silent',
-                '--command', document.source]
-    elif is_saved:
-        args = ['--incremental',
-                '--show-column-numbers',
-                '--follow-imports', 'silent',
-                document.path]
-    else:
-        return []
+    shadowfile = None
+    try:
+        if live_mode:
+            shadowfile = tempfile.NamedTemporaryFile('w', delete=False)
+            shadowfile.write(document.source)
+            shadowfile.close()
+            args = ['--incremental',
+                    '--show-column-numbers',
+                    '--follow-imports', 'silent',
+                    '--shadow-file', document.path, shadowfile.name,
+                    document.path]
+                    #'--command', document.source]
+        elif is_saved:
+            args = ['--incremental',
+                    '--show-column-numbers',
+                    '--follow-imports', 'silent',
+                    document.path]
+        else:
+            return []
 
-    if settings.get('strict', False):
-        args.append('--strict')
+        if settings.get('strict', False):
+            args.append('--strict')
 
-    report, errors, _ = mypy_api.run(args)
+        report, errors, _ = mypy_api.run(args)
+    finally:
+        if shadowfile is not None:
+            os.unlink(shadowfile.name)
 
     diagnostics = []
     for line in report.splitlines():
